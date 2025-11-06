@@ -18,18 +18,26 @@ const saltRounds = 10;
 
 // POST /auth/signup  - Creates a new user in the database
 router.post("/signup", (req, res, next) => {
-  const { email, password, name } = req.body;
+  const { email, password, name, ocupation} = req.body;
 
   // Check if email or password or name are provided as empty strings
-  if (email === "" || password === "" || name === "") {
-    res.status(400).json({ message: "Provide email, password and name" });
+  if (email === "" || password === "" || name === "" || ocupation === "") {
+    res.status(400).json({ message: "Ingresa tus datos" });
     return;
+  } else if (password === "" ) {
+      res.status(400).json({ message: "Ingresa tu contraseña" });
+  } else if(email === "" ) {
+      res.status(400).json({ message: "Ingresa tu email" });
+  }else if(name === "" ) {
+      res.status(400).json({ message: "Ingresa tu nombre" });
+  }else if(ocupation === "" ) {
+      res.status(400).json({ message: "Ingresa tu ocupacion" });
   }
 
   // This regular expression check that the email is of a valid format
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
   if (!emailRegex.test(email)) {
-    res.status(400).json({ message: "Provide a valid email address." });
+    res.status(400).json({ message: "Ingresa un email valido" });
     return;
   }
 
@@ -38,7 +46,7 @@ router.post("/signup", (req, res, next) => {
   if (!passwordRegex.test(password)) {
     res.status(400).json({
       message:
-        "Password must have at least 6 characters and contain at least one number, one lowercase and one uppercase letter.",
+        "La contraseña debe tener por lo menos 6 caracteres: un numero, una mayuscula y una minuscula.",
     });
     return;
   }
@@ -48,7 +56,7 @@ router.post("/signup", (req, res, next) => {
     .then((foundUser) => {
       // If the user with the same email already exists, send an error response
       if (foundUser) {
-        res.status(400).json({ message: "User already exists." });
+        res.status(400).json({ message: "Este usuario ya existe" });
         return;
       }
 
@@ -58,15 +66,15 @@ router.post("/signup", (req, res, next) => {
 
       // Create the new user in the database
       // We return a pending promise, which allows us to chain another `then`
-      return User.create({ email, password: hashedPassword, name });
+      return User.create({ email, password: hashedPassword, name, ocupation });
     })
     .then((createdUser) => {
       // Deconstruct the newly created user object to omit the password
       // We should never expose passwords publicly
-      const { email, name, _id } = createdUser;
+      const { email, name, ocupation, _id } = createdUser;
 
       // Create a new object that doesn't expose the password
-      const user = { email, name, _id };
+      const user = { email, name, ocupation, _id };
 
       // Send a json response containing the user object
       res.status(201).json({ user: user });
@@ -80,7 +88,7 @@ router.post("/login", (req, res, next) => {
 
   // Check if email or password are provided as empty string
   if (email === "" || password === "") {
-    res.status(400).json({ message: "Provide email and password." });
+    res.status(400).json({ message: "Ingresa email y contraseña" });
     return;
   }
 
@@ -89,7 +97,7 @@ router.post("/login", (req, res, next) => {
     .then((foundUser) => {
       if (!foundUser) {
         // If the user is not found, send an error response
-        res.status(401).json({ message: "User not found." });
+        res.status(401).json({ message: "No se encontro el usuario" });
         return;
       }
 
