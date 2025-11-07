@@ -1,0 +1,31 @@
+/* src/pages/HomePage.css */
+
+@keyframes backgroundMove {
+    0% {
+        /* INICIO: Comienza a la izquierda (10%) y se mantiene fijo verticalmente (50%) */
+        background-position: 10% 40%;
+    }
+    100% {
+        /* FIN/PUNTO MÁXIMO: Se detiene aquí */
+        background-position: 25% 25%;
+    }
+}
+
+.background-animation {
+    animation: backgroundMove 5s ease-in-out forwards;
+    transition: none !important;
+
+    /* 🔑 AJUSTE CLAVE: Ligero zoom para el movimiento, mantiene proporción */
+    background-size: 110% auto;
+}
+
+/* 🔑 CLAVE: La animación se aplica solo cuando React añade la clase 'start-anim' */
+.background-animation.start-anim {
+    /* 5s de duración, forwards para detenerse al final */
+    animation: backgroundMove 5s ease-in-out forwards;
+}
+
+.HomePage {
+    width: 100%;
+    overflow-x: hidden;
+}

@@ -1,0 +1,31 @@
+/* src/pages/LoginPage.css */
+
+/* ------------------------------------- */
+/* Definición de la Animación de Fondo (MODO DEBUGGING: Movimiento Extremo) */
+/* ------------------------------------- */
+/* src/pages/LoginPage.css */
+
+@keyframes backgroundMove {
+    0% {
+        background-position: 5% 0%;
+    }
+    100% {
+        /* FORZAR EXTREMO: Desplazamiento 4 veces la altura del contenedor */
+        background-position:65% 50%;
+    }
+}
+
+.background-animation {
+    /* Mueve la imagen más rápido para probar */
+    animation: backgroundMove 40s ease-in-out infinite alternate;
+    transition: none !important;
+
+    /* FORZAR TAMAÑO: Hacemos la imagen más grande */
+    background-size: 200% auto;
+}
+
+/* Estilos de errores si los necesitas (opcional) */
+.error-message {
+    color: #D84343;
+    font-weight: 500;
+}
