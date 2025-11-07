@@ -1,0 +1,36 @@
+/* src/pages/SignupPage.css */
+
+/* ------------------------------------- */
+/* Definición de la Animación de Fondo (Paralaje) */
+/* ------------------------------------- */
+
+@keyframes backgroundMove {
+    0% {
+        background-position: 30% 30%;
+    }
+    100% {
+        background-position: 70% 70%;
+    }
+}
+
+/* Prefijos para compatibilidad */
+@-webkit-keyframes backgroundMove {
+    0% {
+        background-position: 30% 30%;
+    }
+    100% {
+        background-position: 70% 70%;
+    }
+}
+
+/* Aplicamos la animación directamente a la clase CSS */
+.background-animation {
+    animation: backgroundMove 4s linear infinite alternate;
+}
+
+/* Estilos de mensajes de error (puedes dejarlos aquí si lo deseas) */
+.error-message {
+    color: #D84343; /* Ejemplo */
+    text-align: center; /* Ejemplo */
+    margin-top: 10px; /* Ejemplo */
+}
