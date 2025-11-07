@@ -11,6 +11,7 @@ const flightSchema = new Schema(
             index: true,  // Crea un índice para búsquedas rápidas (usado en bulkWrite filter)
             trim: true,
             uppercase: true,
+            sparse: true
         },
 
 
@@ -91,6 +92,8 @@ const flightSchema = new Schema(
             enum: ['En Vuelo', 'Aterrizado', 'Retrasado', 'Patrón de Vuelo', 'Adelantado', 'Desconocido'],
             default: 'Desconocido',
         },
+
+        flight_number: { type: String },
     },
     {
         // Añade `createdAt` y `updatedAt` automáticamente
