@@ -11,8 +11,32 @@ const express = require("express");
 
 const app = express();
 
+const { aviationstackCollector, getMetrics } = require('./api/collector/aviationstackCollector');
+
 // ℹ️ This function is getting exported from the config folder. It runs most pieces of middleware
 require("./config")(app);
+
+app.get('./api/collector/aviationstackCollector', (req, res) => {
+    try {
+        const metrics = getMetrics(); // <-- usa las métricas definidas dentro del collector
+        if (!metrics || !metrics.lastRun) {
+            return res.status(503).json({ message: 'No hay métricas disponibles aún' });
+        }
+        res.json({
+            source: 'AviationStack',
+            collectedAt: metrics.lastRun,
+            httpStatusCode: metrics.httpStatusCode,
+            latencyMs: metrics.latencyMs,
+            flightCount: metrics.flightCount,
+            delayedFlights: metrics.delayedFlights,
+            arrivals: metrics.arrivals,
+            departures: metrics.departures,
+        });
+    } catch (error) {
+        console.error('[AviationStack] Error al obtener métricas:', error.message);
+        res.status(500).json({ error: 'Error obteniendo métricas de AviationStack' });
+    }
+});
 
 // 👇 Start handling routes here
 const indexRoutes = require("./routes/index.routes");
