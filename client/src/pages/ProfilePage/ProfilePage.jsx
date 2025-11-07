@@ -8,14 +8,19 @@ import {
     Divider,
     IconButton,
 } from "@mui/material";
+// Importaciones de Íconos
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
-import EmailIcon from "@mui/icons-material/Email"; // ✅ CORREGIDO
+import EmailIcon from "@mui/icons-material/Email";
 import SettingsIcon from "@mui/icons-material/Settings";
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import CloudIcon from "@mui/icons-material/Cloud";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import FlightIcon from "@mui/icons-material/Flight";
+import ThunderstormIcon from "@mui/icons-material/Thunderstorm";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import EditIcon from "@mui/icons-material/Edit";
+
 import {AuthContext} from "../../context/auth.context";
 
 // --- Configuración inicial ---
@@ -34,7 +39,7 @@ const initialUserSettings = {
     },
 };
 
-// --- Componente Toggle ---
+// --- Componente Toggle (para Alertas/Advertencias) ---
 const ToggleSetting = ({ icon: Icon, title, description, isEnabled, onToggle }) => (
     <Card
         variant="outlined"
@@ -45,6 +50,7 @@ const ToggleSetting = ({ icon: Icon, title, description, isEnabled, onToggle }) 
             justifyContent: "space-between",
             borderRadius: 3,
             mb: 2,
+            backgroundColor: 'white',
             "&:hover": { backgroundColor: "#f5f7fa" },
         }}
     >
@@ -52,24 +58,92 @@ const ToggleSetting = ({ icon: Icon, title, description, isEnabled, onToggle }) 
             <IconButton sx={{ backgroundColor: "#1976d2", color: "#fff" }}>
                 <Icon />
             </IconButton>
-            <Box>
+
+            <Box sx={{ textAlign: 'left' }}>
                 <Typography variant="subtitle1" fontWeight="bold">
                     {title}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    ml={0}
+                >
                     {description}
                 </Typography>
             </Box>
+
         </Box>
         <Switch checked={isEnabled} onChange={onToggle} color="primary" />
     </Card>
 );
 
+// --- Componente de Ítem de Credencial (CORREGIDO ESPACIADO) ---
+const CredentialItem = ({ icon: Icon, title, value, onEdit }) => {
+
+    return (
+        <Box
+            sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                p: 1.5,
+                borderRadius: 3,
+                "&:hover": { backgroundColor: "#f5f7fa", cursor: 'pointer' },
+                transition: 'background-color 0.2s',
+            }}
+        >
+            {/* Lado Izquierdo (Icono y Título) */}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                <IconButton sx={{ color: "#1976d2" }}>
+                    <Icon />
+                </IconButton>
+                <Typography variant="body1" fontWeight="medium">
+                    {title}
+                </Typography>
+            </Box>
+
+            {/* Lado Derecho (Valor y Flecha) */}
+            <Box
+                sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                    flexShrink: 1,
+                    minWidth: 0,
+                    textAlign: 'right',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                }}
+            >
+                <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{
+                        lineHeight: 1.2,
+                        whiteSpace: 'normal',
+                        overflowWrap: 'break-word',
+                        mb: 0,
+                        // 🔑 AÑADIMOS MARGEN IZQUIERDO AQUÍ
+                        ml: 1,
+                    }}
+                >
+                    {value}
+                </Typography>
+                <IconButton size="small" onClick={onEdit} sx={{ color: 'text.secondary' }}>
+                    <ChevronRightIcon />
+                </IconButton>
+            </Box>
+        </Box>
+    );
+};
+
+
 const ProfilePage = () => {
     const [userSettings, setUserSettings] = useState(initialUserSettings);
     const { user } = useContext(AuthContext);
-    const [email, setEmail] = useState(user.email);
-    const [name, setName] = useState(user.name);
+
+    // Definición del color transparente
+    const transparentWhite = "rgba(255, 255, 255, 0.3)";
 
     const updateSettings = (section, key, value) => {
         setUserSettings((prev) => ({
@@ -81,13 +155,36 @@ const ProfilePage = () => {
         }));
     };
 
+    if (!user) {
+        return <Box sx={{ minHeight: "100vh", display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <Typography variant="h5">Cargando perfil o no autenticado.</Typography>
+        </Box>;
+    }
+
+
     return (
-        <Box sx={{ minHeight: "100vh", backgroundColor: "#fafafa", p: { xs: 2, md: 6 } }}>
-            {/* Encabezado */}
+        <Box
+            sx={{
+                minHeight: "100vh",
+                // FONDO DE CIELO
+                backgroundImage: 'url("/img/cielo.jpg")',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                backgroundAttachment: 'fixed',
+
+                // Overlay Oscuro Sutil
+                backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                backgroundBlendMode: 'overlay',
+
+                p: { xs: 2, md: 6 },
+                pt: { xs: 8, md: 10 }
+            }}
+        >
+            {/* Encabezado Principal */}
             <Box sx={{ borderBottom: "3px solid #1976d2", pb: 2, mb: 5 }}>
                 <Typography
                     variant="h4"
-                    color="primary"
+                    color="white"
                     fontWeight="bold"
                     display="flex"
                     alignItems="center"
@@ -98,75 +195,61 @@ const ProfilePage = () => {
             </Box>
 
             <Grid container spacing={4}>
-                {/* --- PANEL DE CREDENCIALES (ahora arriba) --- */}
+                {/* --- PANEL DE CREDENCIALES (TRANSPARENTE) --- */}
                 <Grid item xs={12}>
                     <Card
                         sx={{
-                            p: 3,
+                            p: 2,
                             borderRadius: 4,
-                            backgroundColor: "#f9f9f9",
-                            border: "1px solid #e0e0e0",
+                            backgroundColor: transparentWhite,
                             boxShadow: 2,
+                            maxWidth: { xs: '100%', sm: '400px' },
+                            margin: { xs: '0', sm: '0 auto 20px auto' }
                         }}
                     >
-                        <Typography
-                            variant="h6"
-                            color="primary"
-                            display="flex"
-                            alignItems="center"
-                            gap={1}
-                            mb={3}
-                        >
-                            <SettingsIcon /> Credenciales
-                        </Typography>
-
-                        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                            {/* Nombre de usuario */}
-                            <Box
-                                sx={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "space-between",
-                                }}
+                        {/* Título de la tarjeta */}
+                        <Box sx={{ pb: 1, mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <AccountCircleIcon fontSize="medium" color="primary"/>
+                            <Typography
+                                variant="h6"
+                                fontWeight="bold"
                             >
-                                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                                    <AccountCircleIcon color="primary" />
-                                    <Typography variant="body1" color="text.secondary">
-                                        Nombre de Usuario
-                                    </Typography>
-                                </Box>
-                                <Typography variant="body1" fontWeight="bold">
-                                    {user.name}
-                                </Typography>
-                            </Box>
+                                Profile
+                            </Typography>
+                        </Box>
 
-                            <Divider />
+                        <Divider sx={{ mb: 1 }}/>
+
+                        <Box sx={{ display: "flex", flexDirection: "column", gap: 0 }}>
+
+                            {/* Nombre de usuario */}
+                            <CredentialItem
+                                icon={AccountCircleIcon}
+                                title="Nombre de Usuario"
+                                value={user.name}
+                                onEdit={() => console.log('Habilitar edición de Nombre')}
+                            />
 
                             {/* Correo electrónico */}
-                            <Box
-                                sx={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "space-between",
-                                }}
-                            >
-                                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                                    <EmailIcon color="primary" />
-                                    <Typography variant="body1" color="text.secondary">
-                                        Correo Electrónico
-                                    </Typography>
-                                </Box>
-                                <Typography variant="body1" fontWeight="bold">
-                                    {user.email}
-                                </Typography>
-                            </Box>
+                            <CredentialItem
+                                icon={EmailIcon}
+                                title="Correo Electrónico"
+                                value={user.email}
+                                onEdit={() => console.log('Habilitar edición de Correo')}
+                            />
+
                         </Box>
                     </Card>
                 </Grid>
 
-                {/* --- ALERTAS Y ADVERTENCIAS (debajo) --- */}
+                {/* --- ALERTAS DE HORARIOS (TRANSPARENTE) --- */}
                 <Grid item xs={12} md={6}>
-                    <Card sx={{ p: 3, borderRadius: 4, boxShadow: 2 }}>
+                    <Card sx={{
+                        p: 3,
+                        borderRadius: 4,
+                        boxShadow: 4,
+                        backgroundColor: transparentWhite
+                    }}>
                         <Typography
                             variant="h6"
                             color="primary"
@@ -233,8 +316,14 @@ const ProfilePage = () => {
                     </Card>
                 </Grid>
 
+                {/* --- ADVERTENCIAS Y LOGÍSTICA (TRANSPARENTE) --- */}
                 <Grid item xs={12} md={6}>
-                    <Card sx={{ p: 3, borderRadius: 4, boxShadow: 2 }}>
+                    <Card sx={{
+                        p: 3,
+                        borderRadius: 4,
+                        boxShadow: 4,
+                        backgroundColor: transparentWhite
+                    }}>
                         <Typography
                             variant="h6"
                             color="primary"
@@ -262,7 +351,7 @@ const ProfilePage = () => {
 
                         {userSettings.warnings.receiveWeatherWarnings && (
                             <ToggleSetting
-                                icon={CloudIcon}
+                                icon={ThunderstormIcon}
                                 title="Solo Alertas Críticas"
                                 description="Limitar las notificaciones a las más graves."
                                 isEnabled={userSettings.warnings.onlyCriticalWeather}
@@ -309,7 +398,7 @@ const ProfilePage = () => {
             {/* Footer */}
             <Box textAlign="center" mt={8} color="text.secondary">
                 <Typography variant="body2">
-                    &copy; {new Date().getFullYear()} Flight Monitor App. Todos los derechos reservados.
+                    &copy; {new Date().getFullYear()} Skyrus App. Todos los derechos reservados.
                 </Typography>
             </Box>
         </Box>
