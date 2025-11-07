@@ -38,9 +38,12 @@ function Navbar() {
         position: 'fixed',
         top: 0,
         left: 0,
-        width: '100%',
-        // Mantenemos el padding derecho amplio para asegurarnos de que se muevan.
-        padding: '15px 50px 15px 30px',
+        width: '100vw',
+
+        // Se mantiene el padding izquierdo y se elimina el derecho
+        padding: '15px 0 15px 20px',
+        marginRight: '0px',
+
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -55,7 +58,7 @@ function Navbar() {
     // Estilo base para todos los botones
     const baseButtonStyle = {
         border: 'none',
-        padding: '8px 15px',
+        padding: '8px 12px',
         borderRadius: '5px',
         cursor: 'pointer',
         fontWeight: '600',
@@ -70,10 +73,8 @@ function Navbar() {
         ...baseButtonStyle,
         backgroundColor: accentColor,
         color: '#fff',
-        // Mantener un margen a la izquierda
-        marginLeft: '5px',
-        // *** CAMBIO CLAVE ***: Añadir un margen a la derecha para empujarse del borde
-        marginRight: '15px' // Añadimos 15px extra a la derecha del botón principal
+        marginLeft: '0px',
+        marginRight: '0px'
     };
 
     // Estilo para botones secundarios (Registro, Logout)
@@ -82,20 +83,33 @@ function Navbar() {
         backgroundColor: 'transparent',
         border: `1px solid ${accentColor}`,
         color: accentColor,
-        margin: '0 5px'
+        margin: '0',
     };
 
     // Estilo para el nombre del usuario
     const userNameStyle = {
         color: primaryTextColor,
         fontWeight: '500',
-        marginLeft: '15px',
-        marginRight: '15px'
+
+        marginLeft: '10px',
+
+        flexShrink: 2,
+
+        // Límites de truncamiento
+        maxWidth: '100px',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
     }
 
     const controlsContainerStyle = {
         display: 'flex',
         alignItems: 'center',
+        gap: '5px',
+        minWidth: 0,
+
+        // 🔑 MARGEN DERECHO AUMENTADO: Ahora tiene 30px de margen respecto al borde de la pantalla.
+        paddingRight: '30px',
     }
 
 
@@ -113,7 +127,6 @@ function Navbar() {
 
                         {/* 2. Enlace a Perfil */}
                         <Link to="/profile">
-                            {/* Aquí mantenemos el actionButtonStyle, que ya tiene margen derecho (15px) */}
                             <button style={actionButtonStyle}>Perfil</button>
                         </Link>
 
@@ -131,7 +144,6 @@ function Navbar() {
 
                         {/* 2. Enlace a Inicio de Sesión (Login) - Botón principal */}
                         <Link to="/login">
-                            {/* Aplicamos actionButtonStyle, que tiene un marginRight de 15px, moviendo la pareja de botones a la izquierda. */}
                             <button style={actionButtonStyle}>Iniciar Sesión</button>
                         </Link>
                     </>
