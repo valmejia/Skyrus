@@ -7,11 +7,11 @@
 
 @keyframes backgroundMove {
     0% {
-        background-position: 50% 0%;
+        background-position: 5% 0%;
     }
     100% {
         /* FORZAR EXTREMO: Desplazamiento 4 veces la altura del contenedor */
-        background-position:100% 50%;
+        background-position:80% 50%;
     }
 }
 

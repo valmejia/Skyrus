@@ -1,36 +1,31 @@
-/* src/pages/SignupPage.css */
+/* src/pages/LoginPage.css */
 
 /* ------------------------------------- */
-/* Definición de la Animación de Fondo (Paralaje) */
+/* Definición de la Animación de Fondo (MODO DEBUGGING: Movimiento Extremo) */
 /* ------------------------------------- */
+/* src/pages/LoginPage.css */
 
 @keyframes backgroundMove {
     0% {
-        background-position: 30% 30%;
+        background-position: 5% 0%;
     }
     100% {
-        background-position: 70% 70%;
+        /* FORZAR EXTREMO: Desplazamiento 4 veces la altura del contenedor */
+        background-position:65% 50%;
     }
 }
 
-/* Prefijos para compatibilidad */
-@-webkit-keyframes backgroundMove {
-    0% {
-        background-position: 30% 30%;
-    }
-    100% {
-        background-position: 70% 70%;
-    }
-}
-
-/* Aplicamos la animación directamente a la clase CSS */
 .background-animation {
-    animation: backgroundMove 4s linear infinite alternate;
+    /* Mueve la imagen más rápido para probar */
+    animation: backgroundMove 40s ease-in-out infinite alternate;
+    transition: none !important;
+
+    /* FORZAR TAMAÑO: Hacemos la imagen más grande */
+    background-size: 200% auto;
 }
 
-/* Estilos de mensajes de error (puedes dejarlos aquí si lo deseas) */
+/* Estilos de errores si los necesitas (opcional) */
 .error-message {
-    color: #D84343; /* Ejemplo */
-    text-align: center; /* Ejemplo */
-    margin-top: 10px; /* Ejemplo */
+    color: #D84343;
+    font-weight: 500;
 }
