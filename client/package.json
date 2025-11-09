@@ -2,6 +2,7 @@
   "name": "Skyrus-client",
   "version": "0.1.0",
   "private": true,
+  "proxy": "http://localhost:5005",
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
@@ -9,10 +10,12 @@
     "@mui/material": "^7.3.5",
     "@mui/styled-engine-sc": "^7.3.5",
     "axios": "^1.13.2",
+    "es-toolkit": "^1.41.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.9.5",
     "react-scripts": "^5.0.1",
+    "recharts": "^3.3.0",
     "styled-components": "^6.1.19"
   },
   "scripts": {

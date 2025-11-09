@@ -1,46 +1,40 @@
-import React, {useContext, useState} from "react";
+import React, { useContext, useState, useEffect } from "react";
 import {
-    Box,
-    Grid,
-    Card,
-    Typography,
-    Switch,
-    Divider,
-    IconButton,
+    Box, Grid, Card, Typography, Switch, IconButton, Alert, Snackbar, Button
 } from "@mui/material";
-// Importaciones de Íconos
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import EmailIcon from "@mui/icons-material/Email";
-import SettingsIcon from "@mui/icons-material/Settings";
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import CloudIcon from "@mui/icons-material/Cloud";
-import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import FlightIcon from "@mui/icons-material/Flight";
 import ThunderstormIcon from "@mui/icons-material/Thunderstorm";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-import EditIcon from "@mui/icons-material/Edit";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import WarningIcon from "@mui/icons-material/Warning";
 
-import {AuthContext} from "../../context/auth.context";
+import { AuthContext } from "../../context/auth.context";
 
-// --- Configuración inicial ---
-const initialUserSettings = {
-    alerts: {
-        scheduledDeparture: true,
-        scheduledArrival: true,
-        criticalTimeChange: true,
-        flightStatusChange: true,
-    },
-    warnings: {
-        receiveWeatherWarnings: true,
-        onlyCriticalWeather: false,
-        receiveGeneralWarnings: true,
-        includeGateTerminalChanges: true,
-    },
-};
+// --- NUEVOS TRIGGERS (Zabbix reales) ---
+const TRIGGERS = [
+    { id: 23721, title: "EMERGENCIA AÉREA", icon: FlightIcon },
+    { id: 23722, title: "POSIBLE SECUESTRO AÉREO", icon: FlightIcon },
+    { id: 23723, title: "FALLO DE COMUNICACIÓN", icon: ThunderstormIcon },
+    { id: 23724, title: "OpenSky API no responde", icon: CloudIcon },
+    { id: 23725, title: "MongoDB desconectado", icon: CloudIcon },
+    { id: 23726, title: "Datos de vuelos muy antiguos", icon: WarningAmberIcon },
+    { id: 23727, title: "Alta latencia en collector", icon: WarningAmberIcon },
+    { id: 23728, title: "No hay vuelos detectados sobre CDMX", icon: NotificationsIcon },
+    { id: 23729, title: "Retraso en salidas de vuelos", icon: FlightIcon },
+    { id: 23730, title: "Retraso en llegadas de vuelos", icon: FlightIcon },
+    { id: 23731, title: "Salidas adelantadas de vuelos", icon: FlightIcon },
+    { id: 23732, title: "Alertas meteorológicas activas", icon: ThunderstormIcon },
+    { id: 23733, title: "Vientos fuertes en zona", icon: ThunderstormIcon },
+    { id: 23734, title: "Visibilidad por clima", icon: CloudIcon },
+];
 
-// --- Componente Toggle (para Alertas/Advertencias) ---
-const ToggleSetting = ({ icon: Icon, title, description, isEnabled, onToggle }) => (
+// --- Componente Toggle ---
+const ToggleSetting = ({ icon: Icon, title, isEnabled, onToggle, loading }) => (
     <Card
         variant="outlined"
         sx={{
@@ -50,7 +44,7 @@ const ToggleSetting = ({ icon: Icon, title, description, isEnabled, onToggle }) 
             justifyContent: "space-between",
             borderRadius: 3,
             mb: 2,
-            backgroundColor: 'white',
+            backgroundColor: "white",
             "&:hover": { backgroundColor: "#f5f7fa" },
         }}
     >
@@ -58,349 +52,231 @@ const ToggleSetting = ({ icon: Icon, title, description, isEnabled, onToggle }) 
             <IconButton sx={{ backgroundColor: "#1976d2", color: "#fff" }}>
                 <Icon />
             </IconButton>
-
-            <Box sx={{ textAlign: 'left' }}>
-                <Typography variant="subtitle1" fontWeight="bold">
-                    {title}
-                </Typography>
-                <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    ml={0}
-                >
-                    {description}
-                </Typography>
-            </Box>
-
+            <Typography variant="subtitle1" fontWeight="bold">{title}</Typography>
         </Box>
-        <Switch checked={isEnabled} onChange={onToggle} color="primary" />
+        <Switch
+            checked={isEnabled}
+            onChange={onToggle}
+            color="primary"
+            disabled={loading}
+        />
     </Card>
 );
 
-// --- Componente de Ítem de Credencial (CORREGIDO ESPACIADO) ---
-const CredentialItem = ({ icon: Icon, title, value, onEdit }) => {
-
-    return (
-        <Box
-            sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                p: 1.5,
-                borderRadius: 3,
-                "&:hover": { backgroundColor: "#f5f7fa", cursor: 'pointer' },
-                transition: 'background-color 0.2s',
-            }}
-        >
-            {/* Lado Izquierdo (Icono y Título) */}
-            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                <IconButton sx={{ color: "#1976d2" }}>
-                    <Icon />
-                </IconButton>
-                <Typography variant="body1" fontWeight="medium">
-                    {title}
-                </Typography>
-            </Box>
-
-            {/* Lado Derecho (Valor y Flecha) */}
-            <Box
-                sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                    flexShrink: 1,
-                    minWidth: 0,
-                    textAlign: 'right',
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                }}
-            >
-                <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{
-                        lineHeight: 1.2,
-                        whiteSpace: 'normal',
-                        overflowWrap: 'break-word',
-                        mb: 0,
-                        // 🔑 AÑADIMOS MARGEN IZQUIERDO AQUÍ
-                        ml: 1,
-                    }}
-                >
-                    {value}
-                </Typography>
-                <IconButton size="small" onClick={onEdit} sx={{ color: 'text.secondary' }}>
-                    <ChevronRightIcon />
-                </IconButton>
-            </Box>
+// --- Datos del usuario ---
+const CredentialItem = ({ icon: Icon, title, value }) => (
+    <Box sx={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        p: 1.5,
+        borderRadius: 3,
+        "&:hover": { backgroundColor: "#f5f7fa", cursor: "pointer" },
+    }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <IconButton sx={{ color: "#1976d2" }}>
+                <Icon />
+            </IconButton>
+            <Typography variant="body1" fontWeight="medium">{title}</Typography>
         </Box>
-    );
-};
-
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Typography variant="body2" color="text.secondary">{value}</Typography>
+            <ChevronRightIcon />
+        </Box>
+    </Box>
+);
 
 const ProfilePage = () => {
-    const [userSettings, setUserSettings] = useState(initialUserSettings);
     const { user } = useContext(AuthContext);
+    const [triggersState, setTriggersState] = useState({});
+    const [loading, setLoading] = useState({});
+    const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
 
-    // Definición del color transparente
-    const transparentWhite = "rgba(255, 255, 255, 0.3)";
+    // 🧩 Obtener estados reales de Zabbix al cargar
+    useEffect(() => {
+        const fetchTriggerStates = async () => {
+            const newStates = {};
+            for (const t of TRIGGERS) {
+                try {
+                    const token = localStorage.getItem('token');
+                    const response = await fetch(`/api/zabbix/trigger/${t.id}`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Accept': 'application/json'
+                        }
+                    });
 
-    const updateSettings = (section, key, value) => {
-        setUserSettings((prev) => ({
-            ...prev,
-            [section]: {
-                ...prev[section],
-                [key]: value,
-            },
-        }));
+                    if (!response.ok) {
+                        console.warn(`Trigger ${t.id} no encontrado: ${response.status}`);
+                        newStates[t.id] = false;
+                        continue;
+                    }
+
+                    const data = await response.json();
+                    newStates[t.id] = data.state === true;
+                } catch (err) {
+                    console.error(`Error al consultar trigger ${t.id}:`, err);
+                    newStates[t.id] = false;
+                }
+            }
+            setTriggersState(newStates);
+        };
+        fetchTriggerStates();
+    }, []);
+
+    // 🔄 Cambiar estado de un trigger
+    const handleToggle = async (triggerId, newValue) => {
+        setLoading(prev => ({ ...prev, [triggerId]: true }));
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`/api/zabbix/trigger/${triggerId}/toggle`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ enable: newValue }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`Error ${response.status}`);
+            }
+
+            const result = await response.json();
+            console.log('Toggle result:', result);
+
+            // Mostrar feedback al usuario
+            if (result.zabbixSuccess) {
+                setSnackbar({
+                    open: true,
+                    message: `✅ Trigger ${newValue ? 'activado' : 'desactivado'} en Zabbix correctamente`,
+                    severity: "success"
+                });
+            } else {
+                setSnackbar({
+                    open: true,
+                    message: `⚠️ Trigger ${newValue ? 'activado' : 'desactivado'} solo localmente (Zabbix no disponible)`,
+                    severity: "warning"
+                });
+            }
+
+            setTriggersState(prev => ({ ...prev, [triggerId]: newValue }));
+        } catch (err) {
+            console.error("Error al actualizar trigger:", err);
+            setSnackbar({
+                open: true,
+                message: "❌ Error al cambiar el estado del trigger",
+                severity: "error"
+            });
+        } finally {
+            setLoading(prev => ({ ...prev, [triggerId]: false }));
+        }
     };
 
-    if (!user) {
-        return <Box sx={{ minHeight: "100vh", display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            <Typography variant="h5">Cargando perfil o no autenticado.</Typography>
-        </Box>;
-    }
+    const handleCloseSnackbar = () => {
+        setSnackbar({ ...snackbar, open: false });
+    };
 
+    const transparentWhite = "rgba(255,255,255,0.3)";
+    if (!user) return <Typography>Cargando perfil...</Typography>;
 
     return (
         <Box
             sx={{
                 minHeight: "100vh",
-                // FONDO DE CIELO
                 backgroundImage: 'url("/img/cielo.jpg")',
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                backgroundAttachment: 'fixed',
-
-                // Overlay Oscuro Sutil
-                backgroundColor: 'rgba(0, 0, 0, 0.2)',
-                backgroundBlendMode: 'overlay',
-
-                p: { xs: 2, md: 6 },
-                pt: { xs: 8, md: 10 }
+                backgroundSize: "cover",
+                backgroundAttachment: "fixed",
+                backgroundBlendMode: "overlay",
+                backgroundColor: "rgba(0,0,0,0.2)",
+                p: 6,
             }}
         >
-            {/* Encabezado Principal */}
-            <Box sx={{ borderBottom: "3px solid #1976d2", pb: 2, mb: 5 }}>
-                <Typography
-                    variant="h4"
-                    color="white"
-                    fontWeight="bold"
-                    display="flex"
-                    alignItems="center"
-                    gap={1}
-                >
-                    <AccountCircleIcon fontSize="large" /> Perfil de Usuario
-                </Typography>
-            </Box>
+            <Typography variant="h4" color="white" fontWeight="bold" mb={4}>
+                Perfil de Usuario
+            </Typography>
 
-            <Grid container spacing={4}>
-                {/* --- PANEL DE CREDENCIALES (TRANSPARENTE) --- */}
-                <Grid item xs={12}>
-                    <Card
-                        sx={{
-                            p: 2,
-                            borderRadius: 4,
-                            backgroundColor: transparentWhite,
-                            boxShadow: 2,
-                            maxWidth: { xs: '100%', sm: '400px' },
-                            margin: { xs: '0', sm: '0 auto 20px auto' }
+            {/* Estado de conexión Zabbix */}
+            <Alert
+                severity="info"
+                sx={{ mb: 3, backgroundColor: 'rgba(255,255,255,0.8)' }}
+                action={
+                    <Button
+                        color="inherit"
+                        size="small"
+                        onClick={async () => {
+                            try {
+                                const token = localStorage.getItem('token');
+                                const response = await fetch('/api/zabbix/health');
+                                const health = await response.json();
+                                setSnackbar({
+                                    open: true,
+                                    message: health.zabbix_connected
+                                        ? "✅ Conectado a Zabbix"
+                                        : "❌ Zabbix no disponible",
+                                    severity: health.zabbix_connected ? "success" : "error"
+                                });
+                            } catch (error) {
+                                setSnackbar({
+                                    open: true,
+                                    message: "❌ Error verificando Zabbix",
+                                    severity: "error"
+                                });
+                            }
                         }}
                     >
-                        {/* Título de la tarjeta */}
-                        <Box sx={{ pb: 1, mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <AccountCircleIcon fontSize="medium" color="primary"/>
-                            <Typography
-                                variant="h6"
-                                fontWeight="bold"
-                            >
-                                Profile
-                            </Typography>
-                        </Box>
+                        Verificar Estado
+                    </Button>
+                }
+            >
+                Los cambios se aplican en Zabbix real. Los estados se mantienen persistentes.
+            </Alert>
 
-                        <Divider sx={{ mb: 1 }}/>
-
-                        <Box sx={{ display: "flex", flexDirection: "column", gap: 0 }}>
-
-                            {/* Nombre de usuario */}
-                            <CredentialItem
-                                icon={AccountCircleIcon}
-                                title="Nombre de Usuario"
-                                value={user.name}
-                                onEdit={() => console.log('Habilitar edición de Nombre')}
-                            />
-
-                            {/* Correo electrónico */}
-                            <CredentialItem
-                                icon={EmailIcon}
-                                title="Correo Electrónico"
-                                value={user.email}
-                                onEdit={() => console.log('Habilitar edición de Correo')}
-                            />
-
-                        </Box>
+            <Grid container spacing={4}>
+                {/* Datos del usuario */}
+                <Grid size={{ xs: 12, md: 4 }}>
+                    <Card sx={{ p: 3, borderRadius: 4, backgroundColor: transparentWhite }}>
+                        <CredentialItem icon={AccountCircleIcon} title="Usuario" value={user.name} />
+                        <CredentialItem icon={EmailIcon} title="Correo" value={user.email} />
                     </Card>
                 </Grid>
 
-                {/* --- ALERTAS DE HORARIOS (TRANSPARENTE) --- */}
-                <Grid item xs={12} md={6}>
-                    <Card sx={{
-                        p: 3,
-                        borderRadius: 4,
-                        boxShadow: 4,
-                        backgroundColor: transparentWhite
-                    }}>
-                        <Typography
-                            variant="h6"
-                            color="primary"
-                            display="flex"
-                            alignItems="center"
-                            gap={1}
-                            mb={3}
-                        >
-                            <NotificationsIcon /> Alertas de Horarios
+                {/* Alertas de Zabbix */}
+                <Grid size={{ xs: 12, md: 8 }}>
+                    <Card sx={{ p: 3, borderRadius: 4, backgroundColor: transparentWhite }}>
+                        <Typography variant="h6" color="primary" mb={2}>
+                            <NotificationsIcon /> Alertas del Sistema
                         </Typography>
 
-                        <ToggleSetting
-                            icon={AccessTimeIcon}
-                            title="Hora de Salida Programada"
-                            description="Recibir alerta 1 hora antes de la salida."
-                            isEnabled={userSettings.alerts.scheduledDeparture}
-                            onToggle={() =>
-                                updateSettings(
-                                    "alerts",
-                                    "scheduledDeparture",
-                                    !userSettings.alerts.scheduledDeparture
-                                )
-                            }
-                        />
-                        <ToggleSetting
-                            icon={AccessTimeIcon}
-                            title="Hora de Llegada Programada"
-                            description="Recibir alerta 2 horas antes de la llegada."
-                            isEnabled={userSettings.alerts.scheduledArrival}
-                            onToggle={() =>
-                                updateSettings(
-                                    "alerts",
-                                    "scheduledArrival",
-                                    !userSettings.alerts.scheduledArrival
-                                )
-                            }
-                        />
-                        <ToggleSetting
-                            icon={AccessTimeIcon}
-                            title="Cambio Crítico de Horario"
-                            description="Notificar si hay un cambio significativo."
-                            isEnabled={userSettings.alerts.criticalTimeChange}
-                            onToggle={() =>
-                                updateSettings(
-                                    "alerts",
-                                    "criticalTimeChange",
-                                    !userSettings.alerts.criticalTimeChange
-                                )
-                            }
-                        />
-                        <ToggleSetting
-                            icon={FlightIcon}
-                            title="Estado del Vuelo"
-                            description="Notificar si el vuelo cambia a retrasado, cancelado o desviado."
-                            isEnabled={userSettings.alerts.flightStatusChange}
-                            onToggle={() =>
-                                updateSettings(
-                                    "alerts",
-                                    "flightStatusChange",
-                                    !userSettings.alerts.flightStatusChange
-                                )
-                            }
-                        />
-                    </Card>
-                </Grid>
-
-                {/* --- ADVERTENCIAS Y LOGÍSTICA (TRANSPARENTE) --- */}
-                <Grid item xs={12} md={6}>
-                    <Card sx={{
-                        p: 3,
-                        borderRadius: 4,
-                        boxShadow: 4,
-                        backgroundColor: transparentWhite
-                    }}>
-                        <Typography
-                            variant="h6"
-                            color="primary"
-                            display="flex"
-                            alignItems="center"
-                            gap={1}
-                            mb={3}
-                        >
-                            <WarningAmberIcon /> Advertencias y Logística
-                        </Typography>
-
-                        <ToggleSetting
-                            icon={CloudIcon}
-                            title="Advertencias de Clima"
-                            description="Recibir alertas por condiciones meteorológicas severas."
-                            isEnabled={userSettings.warnings.receiveWeatherWarnings}
-                            onToggle={() =>
-                                updateSettings(
-                                    "warnings",
-                                    "receiveWeatherWarnings",
-                                    !userSettings.warnings.receiveWeatherWarnings
-                                )
-                            }
-                        />
-
-                        {userSettings.warnings.receiveWeatherWarnings && (
+                        {TRIGGERS.map(trigger => (
                             <ToggleSetting
-                                icon={ThunderstormIcon}
-                                title="Solo Alertas Críticas"
-                                description="Limitar las notificaciones a las más graves."
-                                isEnabled={userSettings.warnings.onlyCriticalWeather}
-                                onToggle={() =>
-                                    updateSettings(
-                                        "warnings",
-                                        "onlyCriticalWeather",
-                                        !userSettings.warnings.onlyCriticalWeather
-                                    )
-                                }
+                                key={trigger.id}
+                                icon={trigger.icon}
+                                title={trigger.title}
+                                isEnabled={!!triggersState[trigger.id]}
+                                loading={!!loading[trigger.id]}
+                                onToggle={() => handleToggle(trigger.id, !triggersState[trigger.id])}
                             />
-                        )}
-
-                        <ToggleSetting
-                            icon={WarningAmberIcon}
-                            title="Advertencias Generales"
-                            description="Incluir alertas por problemas logísticos o técnicos."
-                            isEnabled={userSettings.warnings.receiveGeneralWarnings}
-                            onToggle={() =>
-                                updateSettings(
-                                    "warnings",
-                                    "receiveGeneralWarnings",
-                                    !userSettings.warnings.receiveGeneralWarnings
-                                )
-                            }
-                        />
-                        <ToggleSetting
-                            icon={WarningAmberIcon}
-                            title="Cambios de Puerta/Terminal"
-                            description="Notificaciones por cambios en la puerta o terminal."
-                            isEnabled={userSettings.warnings.includeGateTerminalChanges}
-                            onToggle={() =>
-                                updateSettings(
-                                    "warnings",
-                                    "includeGateTerminalChanges",
-                                    !userSettings.warnings.includeGateTerminalChanges
-                                )
-                            }
-                        />
+                        ))}
                     </Card>
                 </Grid>
             </Grid>
 
-            {/* Footer */}
-            <Box textAlign="center" mt={8} color="text.secondary">
-                <Typography variant="body2">
-                    &copy; {new Date().getFullYear()} Skyrus App. Todos los derechos reservados.
-                </Typography>
-            </Box>
+            {/* Snackbar para feedback */}
+            <Snackbar
+                open={snackbar.open}
+                autoHideDuration={6000}
+                onClose={handleCloseSnackbar}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+            >
+                <Alert
+                    onClose={handleCloseSnackbar}
+                    severity={snackbar.severity}
+                    sx={{ width: '100%' }}
+                >
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
         </Box>
     );
 };

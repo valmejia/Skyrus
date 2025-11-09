@@ -2,6 +2,8 @@ import React, { useState, useEffect, useContext } from "react";
 import "./HomePage.css";
 import { AuthContext } from "../../context/auth.context";
 import { Link } from "react-router-dom";
+import Dashboard from "../dashboard/Dashboard";
+import { Box } from "@mui/material";
 
 function HomePage() {
     const [animationStarted, setAnimationStarted] = useState(false);
@@ -11,9 +13,8 @@ function HomePage() {
         setAnimationStarted(true);
     }, []);
 
-    // --- ESTILOS ---
     const heroSectionStyle = {
-        height: "100vh",
+        height: "70vh", // menos alto para dejar espacio al dashboard
         width: "100%",
         position: "relative",
         overflow: "hidden",
@@ -53,17 +54,6 @@ function HomePage() {
         textAlign: "center",
     };
 
-    const aboutSectionStyle = {
-        padding: "80px 10%",
-        backgroundColor: "#F7F7F7",
-        minHeight: "60vh",
-        color: "#444",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        textAlign: "center",
-    };
-
     const buttonStyle = {
         backgroundColor: "#D84343",
         color: "white",
@@ -79,57 +69,32 @@ function HomePage() {
         transition: "background-color 0.3s ease, transform 0.2s ease",
     };
 
-    const loremIpsum =
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec odio. Praesent libero. Sed cursus ante dapibus diam. Sed nisi. Nulla quis sem at nibh elementum imperdiet. Duis sagittis ipsum. Praesent mauris.";
-
     return (
         <div className="HomePage">
+            {/* --- SECCIÓN DE BIENVENIDA --- */}
             <header style={heroSectionStyle}>
-                {/* Fondo animado */}
                 <div
                     className={`background-animation ${animationStarted ? "start-anim" : ""}`}
                     style={animatedWingStyle}
                 ></div>
 
-                {/* Título principal */}
                 <h1 style={heroTitleStyle}>Bienvenido a SkyRus</h1>
 
-                {/* 🔑 Si el usuario está logueado */}
                 {isLoggedIn ? (
-                    <>
-                        <p
-                            style={{
-                                color: "white",
-                                zIndex: 10,
-                                fontSize: "1.5em",
-                                marginTop: "20px",
-                            }}
-                        >
+                    <Box textAlign="center" zIndex={10}>
+                        <p style={{ color: "white", fontSize: "1.5em", marginTop: "20px" }}>
                             ¡Hola, {user?.name || "piloto"}! 🌤️
                         </p>
                         <Link to="/profile" style={buttonStyle}>
                             Ir a tu Perfil
                         </Link>
-                    </>
+                    </Box>
                 ) : (
-                    <>
-                        <p
-                            style={{
-                                color: "white",
-                                zIndex: 10,
-                                fontSize: "1.2em",
-                                marginTop: "20px",
-                            }}
-                        >
+                    <Box textAlign="center" zIndex={10}>
+                        <p style={{ color: "white", fontSize: "1.2em", marginTop: "20px" }}>
                             Inicia sesión o crea una cuenta para comenzar tu vuelo.
                         </p>
-                        <div
-                            style={{
-                                display: "flex",
-                                gap: "15px",
-                                zIndex: 10,
-                            }}
-                        >
+                        <Box display="flex" gap="15px" justifyContent="center">
                             <Link to="/login" style={buttonStyle}>
                                 Iniciar Sesión
                             </Link>
@@ -143,30 +108,16 @@ function HomePage() {
                             >
                                 Registrarse
                             </Link>
-                        </div>
-                    </>
+                        </Box>
+                    </Box>
                 )}
             </header>
 
-            {/* Solo muestra “Acerca de nosotros” si NO está logueado */}
-            {!isLoggedIn && (
-                <section style={aboutSectionStyle}>
-                    <h2>Acerca de Nosotros</h2>
-                    <p
-                        style={{
-                            textAlign: "justify",
-                            maxWidth: "800px",
-                            margin: "0 auto",
-                            fontSize: "1.1em",
-                            lineHeight: "1.8",
-                        }}
-                    >
-                        {loremIpsum}
-                        <br />
-                        <br />
-                        {loremIpsum}
-                    </p>
-                </section>
+            {/* --- SECCIÓN DEL DASHBOARD --- */}
+            {isLoggedIn && (
+                <Box sx={{ backgroundColor: "#fff", p: 4 }}>
+                    <Dashboard />
+                </Box>
             )}
         </div>
     );
