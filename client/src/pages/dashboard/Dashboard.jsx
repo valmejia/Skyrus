@@ -34,7 +34,8 @@ export default function DashboardPage() {
     useEffect(() => {
         const fetchTriggers = async () => {
             try {
-                const res = await fetch("/api/zabbix/triggers");
+                // ✅ CORREGIDO: Cambiado de "/api/zabbix/triggers" a "/api/triggers"
+                const res = await fetch("/api/triggers");
                 const data = await res.json();
                 // data ejemplo: { "23721": { state: true, value: 7 }, ... }
                 setTriggerData(data);

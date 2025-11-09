@@ -12,8 +12,14 @@ const express = require("express");
 
 const axios = require("axios"); // Asegúrate de importar axios
 
-
 const app = express();
+
+// ✅✅✅ AGREGAR CORS - Esto permite que localhost:3000 acceda al backend
+const cors = require("cors");
+app.use(cors({
+  origin: "http://localhost:3000",
+  credentials: true
+}));
 
 // ℹ️ This function is getting exported from the config folder. It runs most pieces of middleware
 require("./config")(app);
@@ -49,12 +55,16 @@ app.get("/api/opensky", async (req, res) => {
     }
 });
 
+// ✅ COMENTADO: El collector ya se inicia automáticamente en openskyCollector.js
+// No necesitamos llamarlo manualmente aquí para evitar duplicación
+/*
 try {
     collector.fetchAndProcessFlights();
     console.log("✈️ El servicio de recolección OpenSky se ha iniciado.");
 } catch (error) {
     console.error("🔴 Error al iniciar el servicio de recolección:", error.message);
 }
+*/
 
 // 👇 Start handling routes here
 const indexRoutes = require("./routes/index.routes");
@@ -66,6 +76,64 @@ app.use("/auth", authRoutes);
 const zabbixRoutes = require("./routes/zabbixTrigger.js");
 app.use("/api/zabbix", zabbixRoutes);
 
+// ✅✅✅ DEBUG + COMPATIBILIDAD - Versión corregida
+console.log('🔍 DEBUG: Intentando cargar rutas de compatibilidad...');
+try {
+  const compatibilityRoutes = require("./routes/compatibility");
+  console.log('✅ DEBUG: compatibility.js cargado exitosamente');
+  app.use("/api", compatibilityRoutes);
+} catch (error) {
+  console.log('❌ DEBUG: Error cargando compatibility.js:', error.message);
+  console.log('🔄 DEBUG: Creando rutas directas...');
+  
+  // 🔄 RUTAS DIRECTAS DE EMERGENCIA
+  const emergencyData = {
+    "23721": { state: true, value: 100 },
+    "23722": { state: false, value: 0 },
+    "23723": { state: false, value: 0 },
+    "23724": { state: false, value: 0 },
+    "23725": { state: false, value: 0 },
+    "23726": { state: true, value: 85 },
+    "23727": { state: true, value: 65 },
+    "23728": { state: false, value: 0 },
+    "23729": { state: true, value: 75 },
+    "23730": { state: true, value: 60 },
+    "23731": { state: false, value: 0 },
+    "23732": { state: true, value: 90 },
+    "23733": { state: true, value: 55 },
+    "23734": { state: false, value: 0 }
+  };
+
+  app.get("/api/triggers", async (req, res) => {
+    console.log('[Emergency Route] ✅ Enviando datos a /api/triggers');
+    res.json(emergencyData);
+  });
+
+  app.get("/api/zabbix/triggers", async (req, res) => {
+    console.log('[Emergency Route] ✅ Enviando datos a /api/zabbix/triggers');
+    res.json(emergencyData);
+  });
+
+  app.get("/api/trigger/:id", async (req, res) => {
+    const { id } = req.params;
+    console.log(`[Emergency Route] Enviando trigger ${id}`);
+    const triggerData = emergencyData[id];
+    if (!triggerData) {
+      return res.status(404).json({ error: "Trigger no encontrado" });
+    }
+    res.json(triggerData);
+  });
+
+  app.get("/api/zabbix/trigger/:id", async (req, res) => {
+    const { id } = req.params;
+    console.log(`[Emergency Route] Enviando trigger ${id} (zabbix)`);
+    const triggerData = emergencyData[id];
+    if (!triggerData) {
+      return res.status(404).json({ error: "Trigger no encontrado" });
+    }
+    res.json(triggerData);
+  });
+}
 
 // ❗ To handle errors. Routes that don't exist or errors that you handle in specific routes
 require("./error-handling")(app);

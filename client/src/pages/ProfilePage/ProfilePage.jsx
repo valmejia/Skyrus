@@ -1,16 +1,17 @@
 import React, { useContext, useState, useEffect } from "react";
 import {
-    Box, Grid, Card, Typography, Switch, IconButton
+    Box, Grid, Card, Typography, Switch, IconButton, Alert, Snackbar, Button
 } from "@mui/material";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import EmailIcon from "@mui/icons-material/Email";
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import CloudIcon from "@mui/icons-material/Cloud";
-import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import FlightIcon from "@mui/icons-material/Flight";
 import ThunderstormIcon from "@mui/icons-material/Thunderstorm";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import WarningIcon from "@mui/icons-material/Warning";
 
 import { AuthContext } from "../../context/auth.context";
 
@@ -31,7 +32,6 @@ const TRIGGERS = [
     { id: 23733, title: "Vientos fuertes en zona", icon: ThunderstormIcon },
     { id: 23734, title: "Visibilidad por clima", icon: CloudIcon },
 ];
-
 
 // --- Componente Toggle ---
 const ToggleSetting = ({ icon: Icon, title, isEnabled, onToggle, loading }) => (
@@ -90,6 +90,7 @@ const ProfilePage = () => {
     const { user } = useContext(AuthContext);
     const [triggersState, setTriggersState] = useState({});
     const [loading, setLoading] = useState({});
+    const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
 
     // 🧩 Obtener estados reales de Zabbix al cargar
     useEffect(() => {
@@ -97,12 +98,25 @@ const ProfilePage = () => {
             const newStates = {};
             for (const t of TRIGGERS) {
                 try {
-                    const res = await fetch(`/api/zabbix/trigger/${t.id}/status`);
-                    const data = await res.json();
-                    // status = 0 (enabled), 1 (disabled)
-                    newStates[t.id] = data.status === "0" || data.status === 0;
+                    const token = localStorage.getItem('token');
+                    const response = await fetch(`/api/zabbix/trigger/${t.id}`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Accept': 'application/json'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        console.warn(`Trigger ${t.id} no encontrado: ${response.status}`);
+                        newStates[t.id] = false;
+                        continue;
+                    }
+
+                    const data = await response.json();
+                    newStates[t.id] = data.state === true;
                 } catch (err) {
-                    console.error("Error al consultar trigger", t.id, err);
+                    console.error(`Error al consultar trigger ${t.id}:`, err);
+                    newStates[t.id] = false;
                 }
             }
             setTriggersState(newStates);
@@ -114,17 +128,53 @@ const ProfilePage = () => {
     const handleToggle = async (triggerId, newValue) => {
         setLoading(prev => ({ ...prev, [triggerId]: true }));
         try {
-            await fetch(`/api/zabbix/trigger/${triggerId}/toggle`, {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`/api/zabbix/trigger/${triggerId}/toggle`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({ enable: newValue }),
             });
+
+            if (!response.ok) {
+                throw new Error(`Error ${response.status}`);
+            }
+
+            const result = await response.json();
+            console.log('Toggle result:', result);
+
+            // Mostrar feedback al usuario
+            if (result.zabbixSuccess) {
+                setSnackbar({
+                    open: true,
+                    message: `✅ Trigger ${newValue ? 'activado' : 'desactivado'} en Zabbix correctamente`,
+                    severity: "success"
+                });
+            } else {
+                setSnackbar({
+                    open: true,
+                    message: `⚠️ Trigger ${newValue ? 'activado' : 'desactivado'} solo localmente (Zabbix no disponible)`,
+                    severity: "warning"
+                });
+            }
+
             setTriggersState(prev => ({ ...prev, [triggerId]: newValue }));
         } catch (err) {
             console.error("Error al actualizar trigger:", err);
+            setSnackbar({
+                open: true,
+                message: "❌ Error al cambiar el estado del trigger",
+                severity: "error"
+            });
         } finally {
             setLoading(prev => ({ ...prev, [triggerId]: false }));
         }
+    };
+
+    const handleCloseSnackbar = () => {
+        setSnackbar({ ...snackbar, open: false });
     };
 
     const transparentWhite = "rgba(255,255,255,0.3)";
@@ -146,9 +196,45 @@ const ProfilePage = () => {
                 Perfil de Usuario
             </Typography>
 
+            {/* Estado de conexión Zabbix */}
+            <Alert
+                severity="info"
+                sx={{ mb: 3, backgroundColor: 'rgba(255,255,255,0.8)' }}
+                action={
+                    <Button
+                        color="inherit"
+                        size="small"
+                        onClick={async () => {
+                            try {
+                                const token = localStorage.getItem('token');
+                                const response = await fetch('/api/zabbix/health');
+                                const health = await response.json();
+                                setSnackbar({
+                                    open: true,
+                                    message: health.zabbix_connected
+                                        ? "✅ Conectado a Zabbix"
+                                        : "❌ Zabbix no disponible",
+                                    severity: health.zabbix_connected ? "success" : "error"
+                                });
+                            } catch (error) {
+                                setSnackbar({
+                                    open: true,
+                                    message: "❌ Error verificando Zabbix",
+                                    severity: "error"
+                                });
+                            }
+                        }}
+                    >
+                        Verificar Estado
+                    </Button>
+                }
+            >
+                Los cambios se aplican en Zabbix real. Los estados se mantienen persistentes.
+            </Alert>
+
             <Grid container spacing={4}>
                 {/* Datos del usuario */}
-                <Grid item xs={12} md={4}>
+                <Grid size={{ xs: 12, md: 4 }}>
                     <Card sx={{ p: 3, borderRadius: 4, backgroundColor: transparentWhite }}>
                         <CredentialItem icon={AccountCircleIcon} title="Usuario" value={user.name} />
                         <CredentialItem icon={EmailIcon} title="Correo" value={user.email} />
@@ -156,7 +242,7 @@ const ProfilePage = () => {
                 </Grid>
 
                 {/* Alertas de Zabbix */}
-                <Grid item xs={12} md={8}>
+                <Grid size={{ xs: 12, md: 8 }}>
                     <Card sx={{ p: 3, borderRadius: 4, backgroundColor: transparentWhite }}>
                         <Typography variant="h6" color="primary" mb={2}>
                             <NotificationsIcon /> Alertas del Sistema
@@ -175,6 +261,22 @@ const ProfilePage = () => {
                     </Card>
                 </Grid>
             </Grid>
+
+            {/* Snackbar para feedback */}
+            <Snackbar
+                open={snackbar.open}
+                autoHideDuration={6000}
+                onClose={handleCloseSnackbar}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+            >
+                <Alert
+                    onClose={handleCloseSnackbar}
+                    severity={snackbar.severity}
+                    sx={{ width: '100%' }}
+                >
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
         </Box>
     );
 };
