@@ -5,7 +5,7 @@ import ThunderstormIcon from "@mui/icons-material/Thunderstorm";
 import CloudIcon from "@mui/icons-material/Cloud";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import NotificationsIcon from "@mui/icons-material/Notifications";
-import { PieChart, Pie, Cell, Tooltip, Legend } from "recharts";
+import { PieChart, Pie, Cell, Tooltip } from "recharts";
 
 // Configuración de triggers
 const TRIGGERS = [
@@ -29,20 +29,15 @@ const COLORS = ["#00C49F", "#FF4C4C"]; // Verde: OK, Rojo: Problema
 
 export default function DashboardPage() {
     const [triggerData, setTriggerData] = useState({});
-    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchTriggers = async () => {
             try {
-                // ✅ CORREGIDO: Cambiado de "/api/zabbix/triggers" a "/api/triggers"
                 const res = await fetch("/api/triggers");
                 const data = await res.json();
-                // data ejemplo: { "23721": { state: true, value: 7 }, ... }
                 setTriggerData(data);
             } catch (err) {
                 console.error("Error al obtener triggers:", err);
-            } finally {
-                setLoading(false);
             }
         };
         fetchTriggers();

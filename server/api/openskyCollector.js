@@ -3,23 +3,17 @@ const { exec } = require('child_process');
 const fs = require('fs');
 require('dotenv').config();
 
-// Importar y esperar la conexión a MongoDB
 const mongooseConnection = require('../db');
-
-// ✅ AGREGAR ESTA LÍNEA: Importar mongoose directamente
 const mongoose = require('mongoose');
 
-// Configuraciones
 const OPEN_SKY_URL = 'https://opensky-network.org/api/states/all';
-const ZABBIX_HOST = '192.168.159.130';
-const ZABBIX_HOSTNAME = 'OpenSky'; // ⬅️ HOSTNAME CORRECTO
+const ZABBIX_HOST = '192.168.1.91';
+const ZABBIX_HOSTNAME = 'OpenSky';
 
-// Códigos Squawk de emergencia
 const EMERGENCY_SQUAWK = '7700';
 const HIJACK_SQUAWK = '7500';
 const RADIO_FAIL_SQUAWK = '7600';
 
-// CDMX Bounding Box
 const CDMX_BOUNDING_BOX = {
     lamin: 19.0,
     lamax: 20.0,
@@ -27,99 +21,16 @@ const CDMX_BOUNDING_BOX = {
     lomax: -98.9
 };
 
-// Variables OAuth2
 let accessToken = null;
 let tokenExpiry = null;
 
-// 🌤️ NUEVA FUNCIÓN: Métricas de Clima (Simuladas)
-async function fetchWeatherData() {
-    try {
-        // ⚠️ SIMULACIÓN TEMPORAL - Reemplazar con API real después
-        const simulatedWeather = {
-            alert_level: Math.random() > 0.9 ? 2 : Math.random() > 0.7 ? 1 : 0,
-            wind_speed: 15 + Math.random() * 35, // 15-50 km/h
-            visibility: 3000 + Math.random() * 7000, // 3-10km
-            lightning_strikes: Math.random() > 0.95 ? Math.floor(Math.random() * 20) : 0,
-            temperature: 18 + Math.random() * 12 // 18-30°C
-        };
-
-        console.log(`[Weather] Alert level: ${simulatedWeather.alert_level}, Wind: ${simulatedWeather.wind_speed.toFixed(1)} km/h`);
-
-        return [
-            ['weather.alert_level', simulatedWeather.alert_level],
-            ['weather.wind_speed', simulatedWeather.wind_speed],
-            ['weather.visibility', simulatedWeather.visibility],
-            ['weather.lightning_strikes', simulatedWeather.lightning_strikes],
-            ['weather.temperature', simulatedWeather.temperature],
-        ];
-
-    } catch (error) {
-        console.error('[Weather] Error:', error);
-        return [
-            ['weather.alert_level', 0],
-            ['weather.wind_speed', 0],
-            ['weather.visibility', 10000],
-            ['weather.lightning_strikes', 0],
-            ['weather.temperature', 0],
-        ];
-    }
-}
-
-// ⏰ NUEVA FUNCIÓN: Métricas de Puntualidad
-async function calculatePunctualityMetrics() {
-    try {
-        const db = mongoose.connection.db;
-        const collection = db.collection('flights');
-
-        // Contar vuelos por estado de puntualidad
-        // Usando lógica simple basada en el campo 'status' existente
-        const delayedFlights = await collection.countDocuments({
-            status: 'Retrasado'
-        });
-
-        const earlyFlights = await collection.countDocuments({
-            status: 'Adelantado'
-        });
-
-        // Para este ejemplo, dividimos entre salidas y llegadas de manera simétrica
-        // En producción, necesitarías lógica más sofisticada
-        const delayedDepartures = Math.floor(delayedFlights * 0.6); // 60% son salidas
-        const delayedArrivals = Math.floor(delayedFlights * 0.4);   // 40% son llegadas
-        const earlyDepartures = Math.floor(earlyFlights * 0.6);     // 60% son salidas
-        const earlyArrivals = Math.floor(earlyFlights * 0.4);       // 40% son llegadas
-
-        console.log(`[Punctuality] Delayed: ${delayedFlights}, Early: ${earlyFlights}`);
-
-        return [
-            ['app.flights.delayed_departures', delayedDepartures],
-            ['app.flights.delayed_arrivals', delayedArrivals],
-            ['app.flights.early_departures', earlyDepartures],
-            ['app.flights.early_arrivals', earlyArrivals],
-        ];
-
-    } catch (error) {
-        console.error('[Punctuality] Error:', error);
-        return [
-            ['app.flights.delayed_departures', 0],
-            ['app.flights.delayed_arrivals', 0],
-            ['app.flights.early_departures', 0],
-            ['app.flights.early_arrivals', 0],
-        ];
-    }
-}
-
-// ✅ FUNCIÓN CORREGIDA: Solo métricas que existen en Zabbix
 async function getMongoDBMetrics() {
     try {
-        console.log('[MongoDB] Obteniendo métricas con mongoose...');
-
-        // USAR LA CONEXIÓN DIRECTA DE MONGOOSE
         const db = mongoose.connection.db;
         const collection = db.collection('flights');
 
         const totalFlights = await collection.countDocuments();
 
-        // Calcular promedio de altitud
         const avgAltitudeResult = await collection.aggregate([
             { $match: { altitude: { $ne: null, $gte: 0 } } },
             { $group: { _id: null, avgAltitude: { $avg: "$altitude" } } }
@@ -132,7 +43,6 @@ async function getMongoDBMetrics() {
             on_ground: false
         });
 
-        // Contar emergencias por squawk code
         const emergencyCount = await collection.countDocuments({
             squawk: { $in: [EMERGENCY_SQUAWK, HIJACK_SQUAWK, RADIO_FAIL_SQUAWK] }
         });
@@ -140,8 +50,6 @@ async function getMongoDBMetrics() {
         const lastFlight = await collection.findOne({}, { sort: { updatedAt: -1 } });
         const dataFreshness = lastFlight ?
             Math.floor((Date.now() - lastFlight.updatedAt.getTime()) / 1000) : 999999;
-
-        console.log(`[MongoDB] ${totalFlights} vuelos totales, ${flightsOverCDMX} en CDMX`);
 
         return [
             ['mongodb.flights.total_count', totalFlights],
@@ -153,7 +61,7 @@ async function getMongoDBMetrics() {
         ];
 
     } catch (error) {
-        console.error('[MongoDB] Error:', error.message);
+        console.log('MongoDB: Error obteniendo métricas -', error.message);
         return [
             ['mongodb.flights.total_count', 0],
             ['mongodb.flights.over_cdmx', 0],
@@ -165,30 +73,17 @@ async function getMongoDBMetrics() {
     }
 }
 
-// ✅ FUNCIÓN sendToZabbix CORREGIDA con hostname correcto
 function sendToZabbix(metrics) {
     return new Promise((resolve, reject) => {
         const tempFile = 'zabbix_data.txt';
 
-        // ✅ DEBUG: Mostrar métricas antes de enviar
-        console.log('\n[DEBUG] Lista completa de métricas a enviar:');
-        metrics.forEach(([key, value], index) => {
-            console.log(`  ${index + 1}. ${key} = ${value}`);
-        });
-        console.log(`[DEBUG] Total de métricas: ${metrics.length}`);
-        console.log(`[DEBUG] Hostname: "${ZABBIX_HOSTNAME}"`);
-        console.log(`[DEBUG] Servidor Zabbix: ${ZABBIX_HOST}:10051\n`);
-
-        // ✅ FORMATO CORRECTO: Hostname correcto antes de cada métrica
         const lines = metrics.map(([key, value]) =>
             `"${ZABBIX_HOSTNAME}" ${key} ${value}`
         );
 
-        console.log('[Zabbix] Preparando envío de', metrics.length, 'métricas...');
-
         fs.writeFile(tempFile, lines.join('\n'), (err) => {
             if (err) {
-                console.error('[Zabbix] Error escribiendo archivo:', err);
+                console.log('Zabbix: Error creando archivo temporal -', err.message);
                 reject(err);
                 return;
             }
@@ -196,45 +91,26 @@ function sendToZabbix(metrics) {
             const command = `"C:\\Program Files\\Zabbix Agent\\zabbix_sender.exe" -z ${ZABBIX_HOST} -i "${tempFile}"`;
 
             exec(command, { encoding: 'utf8', maxBuffer: 1024 * 1024 }, (error, stdout, stderr) => {
-                // Limpiar archivo temporal
                 try {
                     if (fs.existsSync(tempFile)) {
                         fs.unlinkSync(tempFile);
                     }
                 } catch (e) {}
 
-                if (stdout) {
-                    console.log('[Zabbix] Respuesta:', stdout.trim());
-                    if (stdout.includes('sent:')) {
-                        console.log('[Zabbix] ✅ Datos enviados al servidor');
-                        resolve(stdout);
-                        return;
-                    }
-                }
-
-                if (stderr) console.log('[Zabbix] Stderr:', stderr);
-
                 if (error) {
-                    console.error('[Zabbix] ❌ Error ejecutando comando:', error.message);
+                    console.log('Zabbix: Error enviando datos -', error.message);
                     reject(error);
                 } else {
-                    if (stdout && stdout.includes('processed')) {
-                        console.log('[Zabbix] ⚠️  Envío parcial, pero datos recibidos');
-                        resolve(stdout);
-                    } else {
-                        console.error('[Zabbix] ❌ Error desconocido');
-                        reject(new Error('Error desconocido en zabbix_sender'));
-                    }
+                    console.log('Zabbix: Datos enviados correctamente');
+                    resolve(stdout);
                 }
             });
         });
     });
 }
 
-// ✅ FUNCIONES OAuth (mantener igual)
 async function getOAuthToken() {
     try {
-        console.log('[OAuth] Obteniendo token...');
         const response = await axios.post(
             'https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token',
             new URLSearchParams({
@@ -250,10 +126,10 @@ async function getOAuthToken() {
 
         accessToken = response.data.access_token;
         tokenExpiry = Date.now() + (response.data.expires_in * 1000);
-        console.log(`[OAuth] Token obtenido. Expira en: ${response.data.expires_in}s`);
+        console.log('OpenSky: Token OAuth obtenido');
         return accessToken;
     } catch (error) {
-        console.error('[OAuth] Error:', error.message);
+        console.log('OpenSky: Error obteniendo token -', error.message);
         return null;
     }
 }
@@ -296,11 +172,7 @@ function validateAndCleanFlightData(state) {
     };
 }
 
-// ✅ FUNCIÓN PRINCIPAL CORREGIDA CON NUEVAS MÉTRICAS
 async function fetchAndProcessFlights() {
-    console.log(`[Collector] Iniciando ciclo CDMX: ${new Date().toISOString()}`);
-    const startTime = Date.now();
-
     let flightCount = 0;
     let httpStatusCode = 200;
     let nullLatitudeCount = 0;
@@ -310,13 +182,14 @@ async function fetchAndProcessFlights() {
     let radioFailSquawkCount = 0;
 
     try {
-        // ESPERAR que MongoDB esté conectado
         await mongooseConnection;
-        console.log('[MongoDB] Conexión verificada ✅');
 
         if (!isTokenValid()) {
             const token = await getOAuthToken();
-            if (!token) throw new Error('No se pudo obtener token OAuth2');
+            if (!token) {
+                console.log('OpenSky: No se pudo obtener token, abortando ciclo');
+                return;
+            }
         }
 
         const response = await axios.get(OPEN_SKY_URL, {
@@ -330,7 +203,7 @@ async function fetchAndProcessFlights() {
 
         if (httpStatusCode === 200 && data.states && data.states.length > 0) {
             flightCount = data.states.length;
-            console.log(`[Collector] ${flightCount} vuelos en CDMX`);
+            console.log(`OpenSky: ${flightCount} vuelos encontrados en CDMX`);
 
             const processedFlights = data.states.map(state => {
                 const flightData = validateAndCleanFlightData(state);
@@ -353,104 +226,65 @@ async function fetchAndProcessFlights() {
                 return flightData;
             });
 
-            console.log('[Collector] Datos obtenidos de OpenSky - bulkWrite deshabilitado temporalmente');
-
             // Mostrar vuelos
-            console.log('\n✈️  Vuelos en CDMX:');
-            processedFlights.slice(0, 5).forEach((flight, index) => {
-                console.log(`  ${index + 1}. ${flight.callsign || 'N/A'} - ${flight.origin_country} (${flight.latitude?.toFixed(4)}, ${flight.longitude?.toFixed(4)})`);
+            processedFlights.slice(0, 10).forEach((flight, index) => {
+                if (flight.callsign && flight.latitude && flight.longitude) {
+                    console.log(`${index + 1}. ${flight.callsign} - ${flight.origin_country} (${flight.latitude.toFixed(4)}, ${flight.longitude.toFixed(4)})`);
+                }
             });
-
+            if (processedFlights.length > 10) {
+                console.log(`... and ${processedFlights.length - 10} more flights`);
+            }
         } else if (httpStatusCode === 200) {
-            console.log("[Collector] Sin vuelos en CDMX");
+            console.log('OpenSky: No hay vuelos en área CDMX');
         }
 
     } catch (error) {
         httpStatusCode = error.response ? error.response.status : 0;
-        console.error("[Collector] Error:", error.message);
-        if (error.response && error.response.status === 401) accessToken = null;
+        console.log('OpenSky: Error en conexión -', error.message);
+        if (error.response && error.response.status === 401) {
+            console.log('OpenSky: Token expirado, renovando...');
+            accessToken = null;
+        }
     } finally {
-        const latency = Date.now() - startTime;
-
-        // ✅ MÉTRICAS BASE (las 17 originales)
         const metrics = [
-            // Métricas OpenSky
             ['opensky.http_status_code', httpStatusCode],
-            ['opensky.collection_latency', latency],
             ['opensky.flights_count', flightCount],
             ['opensky.null_latitude_count', nullLatitudeCount],
             ['opensky.oauth_enabled', 1],
             ['opensky.cdmx_filter', 1],
-
-            // Métricas Ingestion
             ['ingestion.data_freshness_seconds', maxDataAgeSeconds],
             ['ingestion.update_rate', flightCount],
-
-            // Métricas App Flights
             ['app.flights.emergency_squawk_count', emergencySquawkCount],
             ['app.flights.hijack_squawk_count', hijackSquawkCount],
             ['app.flights.radio_fail_squawk_count', radioFailSquawkCount]
         ];
 
-        // 🔄 AGREGAR NUEVAS MÉTRICAS
         try {
-            // Métricas de Puntualidad
-            const punctualityMetrics = await calculatePunctualityMetrics();
-            metrics.push(...punctualityMetrics);
-            console.log(`[Collector] Agregadas ${punctualityMetrics.length} métricas de puntualidad`);
-
-            // Métricas de Clima
-            const weatherMetrics = await fetchWeatherData();
-            metrics.push(...weatherMetrics);
-            console.log(`[Collector] Agregadas ${weatherMetrics.length} métricas meteorológicas`);
-
-            // Métricas MongoDB (existentes)
             const mongoMetrics = await getMongoDBMetrics();
             metrics.push(...mongoMetrics);
-            console.log(`[Collector] Agregadas ${mongoMetrics.length} métricas MongoDB`);
-
-        } catch (error) {
-            console.error('[Metrics] Error obteniendo métricas adicionales:', error.message);
-        }
-
-        // Enviar a Zabbix
-        try {
             await sendToZabbix(metrics);
-            console.log('[Zabbix] ✅ Todas las métricas enviadas correctamente a Zabbix');
         } catch (error) {
-            console.error('[Zabbix] ❌ Error enviando métricas:', error);
+            console.log('Error procesando métricas:', error.message);
         }
-
-        console.log(`[Collector] Ciclo terminado en ${latency}ms. Total métricas: ${metrics.length}`);
     }
 }
 
-// ✅ FUNCIÓN DE INICIO (mantener igual)
 async function startCollector() {
     try {
-        console.log('🔄 Esperando conexión a MongoDB...');
         await mongooseConnection;
-        console.log('✅ MongoDB conectado. Iniciando collector...');
-
-        // Iniciar el polling
+        console.log('Collector: Iniciando servicio');
         const collectionInterval = 60 * 1000;
         setInterval(fetchAndProcessFlights, collectionInterval);
-
-        // Ejecutar inmediatamente
-        console.log('🚀 Iniciando primer ciclo de recolección...');
         fetchAndProcessFlights();
-
     } catch (error) {
-        console.error('❌ No se pudo conectar a MongoDB:', error.message);
+        console.log('Collector: Error de conexión a MongoDB -', error.message);
         process.exit(1);
     }
 }
 
-// Iniciar la aplicación
 startCollector();
 
 module.exports = {
-    fetchAndProcessFlights,
-    calculatePunctualityMetrics,
-    fetchWeatherData
+    fetchAndProcessFlights
 };
